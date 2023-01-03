@@ -87,13 +87,11 @@ sk_sp<SkImage> KawaseBlurFilter::generate(GrRecordingContext* context,
     // Kawase is an approximation of Gaussian, but it behaves differently from it.
     // A radius transformation is required for approximating them, and also to introduce
     // non-integer steps, necessary to smoothly interpolate large radii.
-    float tmpRadius = (float)blurRadius / 2.0f;
+    float tmpRadius = (float)blurRadius / 6.0f;
     uint32_t numberOfPasses = std::min(kMaxPasses, (uint32_t)ceil(tmpRadius));
     float radiusByPasses = tmpRadius / (float)numberOfPasses;
 
-    // create blur surface with the bit depth and colorspace of the original surface
-    SkImageInfo scaledInfo = input->imageInfo().makeWH(std::ceil(blurRect.width() * kInputScale),
-                                                       std::ceil(blurRect.height() * kInputScale));
+
 
     // For sampling Skia's API expects the inverse of what logically seems appropriate. In this
     // case you might expect Translate(blurRect.fLeft, blurRect.fTop) X Scale(kInverseInputScale)
@@ -105,7 +103,7 @@ sk_sp<SkImage> KawaseBlurFilter::generate(GrRecordingContext* context,
     SkSamplingOptions linear(SkFilterMode::kLinear, SkMipmapMode::kNone);
     SkRuntimeShaderBuilder blurBuilder(mBlurEffect);
     blurBuilder.child("child") =
-            input->makeShader(SkTileMode::kClamp, SkTileMode::kClamp, linear, blurMatrix);
+            input->makeShader(SkTileMode::kMirror, SkTileMode::kMirror, linear, blurMatrix);
     blurBuilder.uniform("in_blurOffset") = radiusByPasses * kInputScale;
 
     constexpr int kSampleCount = 1;
@@ -129,7 +127,7 @@ sk_sp<SkImage> KawaseBlurFilter::generate(GrRecordingContext* context,
         for (auto i = 1; i < numberOfPasses; i++) {
             LOG_ALWAYS_FATAL_IF(tmpBlur == nullptr, "%s: tmpBlur is null for pass %d", __func__, i);
             blurBuilder.child("child") =
-                    tmpBlur->makeShader(SkTileMode::kClamp, SkTileMode::kClamp, linear);
+                    tmpBlur->makeShader(SkTileMode::kMirror, SkTileMode::kMirror, linear);
             blurBuilder.uniform("in_blurOffset") = (float) i * radiusByPasses * kInputScale;
             tmpBlur = makeImage(surfaceTwo.get(), &blurBuilder);
             using std::swap;
