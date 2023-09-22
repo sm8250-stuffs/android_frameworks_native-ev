@@ -6900,6 +6900,11 @@ protected:
         mWindow->consumeEvent(InputEventType::KEY, AKEY_EVENT_ACTION_UP, ADISPLAY_ID_DEFAULT,
                               /*expectedFlags=*/0);
     }
+    void injectKeyRepeat(int32_t repeatCount) {
+        ASSERT_EQ(InputEventInjectionResult::SUCCEEDED,
+                  injectKey(mDispatcher, AKEY_EVENT_ACTION_DOWN, repeatCount, ADISPLAY_ID_DEFAULT))
+                << "Inject key event should return InputEventInjectionResult::SUCCEEDED";
+    }
 };
 
 TEST_F(InputDispatcherKeyRepeatTest, FocusedWindow_ReceivesKeyRepeat) {
@@ -6986,6 +6991,17 @@ TEST_F(InputDispatcherKeyRepeatTest, FocusedWindow_RepeatKeyEventsUseUniqueEvent
         EXPECT_EQ(idSet.end(), idSet.find(id));
         idSet.insert(id);
     }
+}
+
+TEST_F(InputDispatcherKeyRepeatTest, FocusedWindow_CorrectRepeatCountWhenInjectKeyRepeat) {
+    injectKeyRepeat(0);
+    mWindow->consumeKeyDown(ADISPLAY_ID_DEFAULT);
+    for (int32_t repeatCount = 1; repeatCount <= 2; ++repeatCount) {
+        expectKeyRepeatOnce(repeatCount);
+    }
+    injectKeyRepeat(1);
+    // Expect repeatCount to be 3 instead of 1
+    expectKeyRepeatOnce(3);
 }
 
 /* Test InputDispatcher for MultiDisplay */
